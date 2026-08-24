@@ -23,10 +23,6 @@ void Pc_Nightmare_OnNewGame(void);
  * installed their own header copies (we must copy from whatever is live). */
 void Pc_Nightmare_OnMapLoad(s32 mapIdx);
 
-/* Nightmare Predictive AI: calculates Harry's movement vector, dodge direction,
- * and health condition to return an intercept target position for creatures. */
-VECTOR3 Pc_Nightmare_PredictTargetPos(VECTOR3 from, VECTOR3 to);
-
 /* Once per frame from the main loop: holds the darkness overrides, which the
  * options screen / brightness slider can otherwise stomp. */
 void Pc_Nightmare_Update(void);

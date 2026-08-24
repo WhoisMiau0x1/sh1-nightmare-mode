@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "decomp/types.h"
+#include "bodyprog/math/math.h"
 #include "game.h"
 #include "pc_config.h"
 #include "bodyprog/bodyprog.h"

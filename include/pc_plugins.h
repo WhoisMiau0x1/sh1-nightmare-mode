@@ -18,6 +18,7 @@ typedef int            (*SH_Plugin_HideHealthFunc)(void);
 typedef int            (*SH_Plugin_WeatherFunc)(s32* ambient, s32* rain);
 typedef void           (*SH_Plugin_ScreenFadeFunc)(void);
 typedef int            (*SH_Plugin_NpcSpawnFunc)(e_CharaId* charaId);
+typedef void           (*SH_Plugin_RadioVolumeFunc)(s32* volume);
 typedef void           (*SH_Plugin_RadioAttributesFunc)(s32* volume, s32* pitch);
 typedef int            (*SH_Plugin_LiveInventoryFunc)(void);
 

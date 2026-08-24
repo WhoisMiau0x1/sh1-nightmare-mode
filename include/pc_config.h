@@ -165,6 +165,7 @@ typedef struct
                                      * 0 = off, byte-identical vanilla.
                                      * (config key: nightmare; docs/Nightmare_Mode.md) */
     int nightmareVignette;          /* 1 = show low-health red pulsing vignette in Nightmare Mode (default 1) */
+    int revampedController;         /* 1 = use modern 2-pane interactive controller configuration screen (default 0 in vanilla, 1 in mods) */
 
     int controllerMovement;         /* 0 = analog stick, 1 = d-pad, 2 = both (default) */
     int movementOriginal;           /* 1 = PSX lower-body movement state
