@@ -11,6 +11,10 @@
 #include "bodyprog/bodyprog.h"
 #include "bodyprog/map/map.h"
 #include "map_registry.h"
+#include "bodyprog/text/text_draw.h"
+#include "bodyprog/text/text_debug_draw.h"
+#include "bodyprog/sound/sound_system.h"
+#include "screens/options.h"
 
 #define SH_LOG(fmt, ...) printf("[NIGHTMARE] " fmt "\n", ##__VA_ARGS__)
 
@@ -53,6 +57,154 @@ static void Patch_HideHealthStatus(void)
 #endif
 }
 
+static void Plugin_LoadNightmareConfig(void)
+{
+    g_PcConfig.nightmare = 1;
+    g_PcConfig.revampedController = 1;
+    g_PcConfig.liveInventory = 1;
+    g_PcConfig.nightmareVignette = 1;
+
+    FILE* f = fopen("config.cfg", "r");
+    if (!f) return;
+
+    char line[256];
+    while (fgets(line, sizeof(line), f))
+    {
+        char key[64], val[64];
+        if (sscanf(line, " %63[^= ] = %63s", key, val) == 2 ||
+            sscanf(line, " %63[^= ] = \"%63[^\"]\"", key, val) == 2)
+        {
+            if (strcmp(key, "live_game") == 0 || strcmp(key, "live_inventory") == 0)
+            {
+                g_PcConfig.liveInventory = atoi(val);
+            }
+            else if (strcmp(key, "low_health_fx") == 0 || strcmp(key, "nightmare_vignette") == 0)
+            {
+                g_PcConfig.nightmareVignette = atoi(val);
+            }
+        }
+    }
+    fclose(f);
+}
+
+
+
+extern void Options_Menu_VignetteDraw(void);
+
+static s32 s_overlayOpen = 0;
+static s32 s_overlaySelected = 0;
+
+static void ProcessOverlayInput(void)
+{
+#ifdef _WIN32
+    static int s_prevN = 0;
+    int nDown = (GetAsyncKeyState('N') & 0x8000) != 0 || (GetAsyncKeyState(VK_F4) & 0x8000) != 0;
+    if (nDown && !s_prevN)
+    {
+        s_overlayOpen = !s_overlayOpen;
+        SD_Call(s_overlayOpen ? Sfx_MenuConfirm : Sfx_MenuCancel);
+    }
+    s_prevN = nDown;
+
+    if (!s_overlayOpen) return;
+
+    /* Completely suppress controller input to prevent background game/menu interaction */
+    g_Controller0->heldBtnFlags      = 0;
+    g_Controller0->clickedBtnFlags   = 0;
+    g_Controller0->releasedBtnFlags  = 0;
+    g_Controller0->pulsedBtnFlags    = 0;
+    g_Controller0->pulsedGuiBtnFlags = 0;
+
+    static int s_prevUp = 0, s_prevDown = 0, s_prevLeft = 0, s_prevRight = 0, s_prevEnter = 0, s_prev1 = 0, s_prev2 = 0;
+    int upDown    = (GetAsyncKeyState(VK_UP) & 0x8000) != 0 || (GetAsyncKeyState('W') & 0x8000) != 0;
+    int downDown  = (GetAsyncKeyState(VK_DOWN) & 0x8000) != 0 || (GetAsyncKeyState('S') & 0x8000) != 0;
+    int leftDown  = (GetAsyncKeyState(VK_LEFT) & 0x8000) != 0 || (GetAsyncKeyState('A') & 0x8000) != 0;
+    int rightDown = (GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0 || (GetAsyncKeyState('D') & 0x8000) != 0;
+    int enterDown = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0 || (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+    int k1Down    = (GetAsyncKeyState('1') & 0x8000) != 0;
+    int k2Down    = (GetAsyncKeyState('2') & 0x8000) != 0;
+
+    /* Up / Down navigation */
+    if ((upDown && !s_prevUp) || (downDown && !s_prevDown))
+    {
+        s_overlaySelected = (s_overlaySelected + 1) % 2;
+        SD_Call(Sfx_MenuMove);
+    }
+
+    /* Left / Right / Enter toggle */
+    int toggle = (leftDown && !s_prevLeft) || (rightDown && !s_prevRight) || (enterDown && !s_prevEnter);
+
+    if (toggle || (k1Down && !s_prev1 && s_overlaySelected == 0))
+    {
+        if (s_overlaySelected == 0)
+        {
+            g_PcConfig.liveInventory = !g_PcConfig.liveInventory;
+            PcConfig_SaveKeyValue("live_game", g_PcConfig.liveInventory ? "1" : "0");
+            SD_Call(Sfx_MenuConfirm);
+        }
+        else
+        {
+            g_PcConfig.nightmareVignette = !g_PcConfig.nightmareVignette;
+            PcConfig_SaveKeyValue("low_health_fx", g_PcConfig.nightmareVignette ? "1" : "0");
+            SD_Call(Sfx_MenuConfirm);
+        }
+    }
+    else if (k2Down && !s_prev2 && s_overlaySelected == 1)
+    {
+        g_PcConfig.nightmareVignette = !g_PcConfig.nightmareVignette;
+        PcConfig_SaveKeyValue("low_health_fx", g_PcConfig.nightmareVignette ? "1" : "0");
+        SD_Call(Sfx_MenuConfirm);
+    }
+
+    s_prevUp    = upDown;
+    s_prevDown  = downDown;
+    s_prevLeft  = leftDown;
+    s_prevRight = rightDown;
+    s_prevEnter = enterDown;
+    s_prev1     = k1Down;
+    s_prev2     = k2Down;
+#endif
+}
+
+static void DrawOverlayMenu(void)
+{
+    if (!s_overlayOpen) return;
+
+    /* Draw Background Dimming Vignette */
+    Options_Menu_VignetteDraw();
+
+    /* Draw Header with Silent Hill Gold Font */
+    Gfx_StringSetColor(StringColorId_Gold);
+    Gfx_StringSetPosition(70, 45);
+    Gfx_Strings2dLayerIdxSet(8);
+    Gfx_StringDraw("NIGHTMARE_SETTINGS", 32);
+
+    /* Row 0: Live Game */
+    Gfx_StringSetColor(s_overlaySelected == 0 ? StringColorId_Gold : StringColorId_White);
+    Gfx_StringSetPosition(60, 80);
+    Gfx_StringDraw(s_overlaySelected == 0 ? "> Live_Game:" : "  Live_Game:", 24);
+    Gfx_StringSetPosition(200, 80);
+    Gfx_StringDraw(g_PcConfig.liveInventory ? "ON" : "OFF", 8);
+
+    /* Row 1: Low Health FX */
+    Gfx_StringSetColor(s_overlaySelected == 1 ? StringColorId_Gold : StringColorId_White);
+    Gfx_StringSetPosition(60, 105);
+    Gfx_StringDraw(s_overlaySelected == 1 ? "> Low_Health_FX:" : "  Low_Health_FX:", 24);
+    Gfx_StringSetPosition(200, 105);
+    Gfx_StringDraw(g_PcConfig.nightmareVignette ? "ON" : "OFF", 8);
+
+    /* Instructions */
+    Gfx_StringSetColor(StringColorId_White);
+    Gfx_StringSetPosition(50, 150);
+    Gfx_StringDraw("LEFT/RIGHT: Change", 32);
+    Gfx_StringSetPosition(50, 170);
+    Gfx_StringDraw("UP/DOWN: Select", 32);
+    Gfx_StringSetPosition(50, 190);
+    Gfx_StringDraw("N: Close", 32);
+
+    Gfx_StringsReset2dLayerIdx();
+}
+
 PLUGIN_EXPORT const char* SH_Plugin_GetName(void)
 {
     return "Nightmare Mode Overhaul";
@@ -66,16 +218,14 @@ PLUGIN_EXPORT s32 SH_Plugin_GetApiVersion(void)
 PLUGIN_EXPORT void SH_Plugin_Init(void)
 {
     SH_LOG("[NIGHTMARE_PLUGIN] Initialized Nightmare Overhaul Plugin.");
-    g_PcConfig.nightmare = 1;
-    g_PcConfig.revampedController = 1;
+    Plugin_LoadNightmareConfig();
     ApplyShadowStalkerModelOverrides();
     Patch_HideHealthStatus();
 }
 
 PLUGIN_EXPORT void SH_Plugin_OnNewGame(void)
 {
-    g_PcConfig.nightmare = 1;
-    g_PcConfig.revampedController = 1;
+    Plugin_LoadNightmareConfig();
     s_running = 1;
     SH_LOG("[NIGHTMARE_PLUGIN] New Game started in Nightmare Mode.");
     ApplyShadowStalkerModelOverrides();
@@ -84,7 +234,7 @@ PLUGIN_EXPORT void SH_Plugin_OnNewGame(void)
 
 PLUGIN_EXPORT void SH_Plugin_OnMapLoad(s32 mapIdx)
 {
-    g_PcConfig.nightmare = 1;
+    Plugin_LoadNightmareConfig();
     ApplyShadowStalkerModelOverrides();
     Patch_HideHealthStatus();
 
@@ -110,6 +260,8 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
 {
     /* Always ensure nightmare mode is active when plugin is present */
     g_PcConfig.nightmare = 1;
+
+    ProcessOverlayInput();
 
     /* Patch health indicator in inventory */
     static int s_patchedHealth = 0;
@@ -401,11 +553,13 @@ static void Plugin_RenderLowHealthEffects(void)
 PLUGIN_EXPORT void SH_Plugin_OnRender(void)
 {
     Plugin_RenderLowHealthEffects();
+    DrawOverlayMenu();
 }
 
 PLUGIN_EXPORT void SH_Plugin_OnScreenFadeDraw(void)
 {
     Plugin_RenderLowHealthEffects();
+    DrawOverlayMenu();
 }
 
 PLUGIN_EXPORT int SH_Plugin_OverrideNpcSpawn(e_CharaId* charaId)

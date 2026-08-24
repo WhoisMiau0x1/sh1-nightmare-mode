@@ -38,10 +38,12 @@ An authentic Survival Horror Difficulty & Immersion Overhaul for the **Silent Hi
 
 ## ⚙️ In-Game Options
 
-You can customize your experience at any time from the in-game menu:
-- Go to **Options** -> **Screen Position (PC Options)** -> **Page 2 (System)**
-- **Live_Game**: ON / OFF *(Enable or disable real-time inventory)*
-- **Low_Health_FX**: ON / OFF *(Enable or disable pulsing low-health vignette)*
+You can customize your experience at any time directly in-game:
+- Press **N** (or **F4**) at any time to open the dedicated **NIGHTMARE SETTINGS** overlay menu:
+  - **UP / DOWN**: Select setting (`Live_Game` or `Low_Health_FX`)
+  - **LEFT / RIGHT**: Toggle `ON` / `OFF`
+  - **N**: Close menu and resume game
+- All settings are saved immediately to `config.cfg`.
 
 ## 🧠 Design Philosophy: Why Predictive AI Was Removed
 
