@@ -1,19 +1,18 @@
 {
-  "name": "Vanilla 30Hz Enemy AI Fix",
-  "id": "vanilla_30hz_ai_fix",
+  "name": "Vanilla Enemy AI Restoration Fix",
+  "id": "vanilla_ai_restoration_fix",
   "version": "1.1.0",
-  "author": "WhoisMiau0x1",
-  "description": "Fixes 60FPS+ enemy oscillation and erratic AI by introducing a 30Hz fixed simulation timestep inside map DLLs for Split Head, Grey Children, Puppet Nurses, Doctors, and Groaners, while keeping 60FPS visual rendering smooth.",
+  "author": "WhoisMiau0x1 & Kush",
+  "description": "Fixes 60FPS+ enemy attack timing, decision cadence, and erratic grab commitments across Grey Children, Stalkers, Split Head, and other creatures while keeping 60FPS+ fluid movement and physics.",
   "category": "Gameplay / Bugfix",
   "compatibility": {
     "min_engine_version": "2026.08.20",
     "tested_engine_version": "2026.08.23.1"
   },
   "features": [
-    "30Hz fixed simulation accumulator for Split Head boss arena",
-    "30Hz fixed simulation accumulator for Midwich Elementary School Grey Children",
-    "30Hz fixed simulation accumulator for Alchemilla Hospital Puppet Nurses and Doctors",
-    "30Hz fixed simulation accumulator for Silent Hill streets Groaners and Wormheads",
+    "Framerate-independent attack decision cadence for Grey Children / Stalkers",
+    "Eliminates premature maximum-range grab commitments and missed attacks",
+    "Preserves authentic PS1 combat pacing at 60 FPS, 120 FPS, and 144 FPS",
     "100% compatible with unmodified vanilla official Beta SilentHillPC.exe"
   ]
 }
