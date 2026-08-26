@@ -4,22 +4,32 @@ An authentic Survival Horror Difficulty & Immersion Overhaul for the **Silent Hi
 
 ---
 
+## 📥 Downloads & Packages
+
+| Package | Contents | Description |
+| :--- | :--- | :--- |
+| **Nightmare_Plus_30Hz_AI_Fix_Bundle_v1.1.zip** | `Nightmare Mode` + `Vanilla 30Hz AI Fix` | **Recommended.** Full survival horror overhaul + 60FPS enemy AI fix. |
+| **Nightmare_Mode_v1.1_Release.zip** | `plugins/nightmare_mode.dll` | Nightmare Mode difficulty plugin only. |
+| **Vanilla_30Hz_Enemy_AI_Fix_v1.1_Release.zip** | `mods/Vanilla_30Hz_AI_Fix/` | Pure vanilla 60FPS AI fix (no difficulty changes). |
+
+---
+
 ## 📥 Installation Guide
 
 ### Option 1: Via Mod Manager (Recommended)
-1. Download **Nightmare_Mode_v1.0_Release.zip** from the Releases section.
-2. Extract the zip into your game's **mods** folder:
-   - Target: mods/Nightmare_Overhaul_Mod/plugins/nightmare_mode.dll
-3. Open the **Launcher**, go to the **Mod Manager** tab, check **Nightmare Mode Overhaul**, and click **Apply**.
-4. Start the game and select **New Game**!
+1. Download **Nightmare_Plus_30Hz_AI_Fix_Bundle_v1.1.zip** (or your preferred zip above).
+2. Extract the zip into your game's **`mods/`** folder.
+3. Open **`SilentHillPC_Launcher.exe`**, go to the **Mod Manager** tab, check the mods, and click **Apply** / **Play**.
+4. Start the game and enjoy!
 
 ---
 
 ### Option 2: Manual Installation (Direct)
-1. Download **Nightmare_Mode_v1.0_Release.zip** and extract it.
-2. Copy **nightmare_mode.dll** directly into your game's **plugins** folder:
-   - Target: plugins/nightmare_mode.dll
-3. Start **SilentHillPC.exe** and select **New Game**!
+1. Download **Nightmare_Mode_v1.1_Release.zip** and extract it.
+2. Copy **`nightmare_mode.dll`** directly into your game's **`plugins/`** folder:
+   - Target: `plugins/nightmare_mode.dll`
+3. If using the **Vanilla 30Hz AI Fix**, copy all map DLLs from `maps/` into your game's `maps/` directory.
+4. Start **`SilentHillPC.exe`**!
 
 ---
 

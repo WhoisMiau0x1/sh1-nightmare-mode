@@ -1,0 +1,22 @@
+{
+  "name": "Nightmare Mode Overhaul",
+  "id": "nightmare_mode_overhaul",
+  "version": "1.0.0",
+  "author": "WhoisMiau0x1",
+  "description": "True Survival Horror Overhaul for Silent Hill 1 PC Port. Features 2x lethal combat damage, aggressive 1.5x speed shadow stalkers, live inventory time flow, Twinfeeler toxic acid poisoning, and dynamic SH2 Remake heartbeat low-health vignette.",
+  "category": "Gameplay / Difficulty Overhaul",
+  "compatibility": {
+    "min_engine_version": "2026.08.20",
+    "tested_engine_version": "2026.08.23.1"
+  },
+  "plugin": "plugins/nightmare_mode.dll",
+  "features": [
+    "2x Lethal Combat Damage (Punishing yet fair)",
+    "Grey Children / Shadow Stalkers +50% speed & high-agility cornering",
+    "Live Real-Time World Simulation in Inventory and Maps",
+    "Dynamic SH2 Remake Low-Health Heartbeat Vignette (FPS delta synced)",
+    "Twinfeeler Toxic Acid Poisoning (cured by First Aid Kits / Ampoules)",
+    "Permanent Night & Heavy Rain Otherworld Atmosphere",
+    "Low Health Radio Static Distortions"
+  ]
+}
