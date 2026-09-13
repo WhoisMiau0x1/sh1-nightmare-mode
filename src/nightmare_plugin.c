@@ -15,6 +15,7 @@
 #include "bodyprog/text/text_debug_draw.h"
 #include "bodyprog/sound/sound_system.h"
 #include "screens/options.h"
+#include "bodyprog/screen/screen_fade.h"
 
 #define SH_LOG(fmt, ...) printf("[NIGHTMARE] " fmt "\n", ##__VA_ARGS__)
 
@@ -52,6 +53,73 @@ static void Patch_HideHealthStatus(void)
             *(unsigned char*)pFunc = 0xC3; /* x86/x64 RET instruction to suppress health face/bar */
             VirtualProtect(pFunc, 1, oldProtect, &oldProtect);
             SH_LOG("[NIGHTMARE_PLUGIN] Successfully patched Gfx_Inventory_HealthStatusDraw to RET (health indicator hidden).");
+        }
+    }
+#endif
+}
+
+/* Seamless Door Transitions Support: dynamic in-memory hooks */
+static void (*s_orig_LoadScreenPlayerRun)(void) = NULL;
+static void (*s_orig_LoadScreenBgImg)(void)     = NULL;
+
+static void Hook_LoadScreen_PlayerRun(void)
+{
+    if (g_SysWork.processFlags == ProcessFlag_RoomTransition ||
+        g_SysWork.processFlags == ProcessFlag_OverlayTransition)
+    {
+        return; /* Seamless: don't draw loading screen or runner during door transitions */
+    }
+    if (s_orig_LoadScreenPlayerRun)
+    {
+        s_orig_LoadScreenPlayerRun();
+    }
+}
+
+static void Hook_LoadScreen_BackgroundImg(void)
+{
+    if (g_SysWork.processFlags == ProcessFlag_RoomTransition ||
+        g_SysWork.processFlags == ProcessFlag_OverlayTransition)
+    {
+        return; /* Seamless: don't draw loading background during door transitions */
+    }
+    if (s_orig_LoadScreenBgImg)
+    {
+        s_orig_LoadScreenBgImg();
+    }
+}
+
+static void InstallSeamlessDoorsHooks(void)
+{
+#ifdef _WIN32
+    void* pTable = (void*)GetProcAddress(GetModuleHandleA(NULL), "g_LoadScreenFuncs");
+    if (pTable)
+    {
+        void (**funcs)(void) = (void (**)(void))pTable;
+        if (funcs[0] != Hook_LoadScreen_PlayerRun)
+        {
+            s_orig_LoadScreenPlayerRun = funcs[0];
+            funcs[0] = Hook_LoadScreen_PlayerRun;
+        }
+        if (funcs[1] != Hook_LoadScreen_BackgroundImg)
+        {
+            s_orig_LoadScreenBgImg = funcs[1];
+            funcs[1] = Hook_LoadScreen_BackgroundImg;
+        }
+    }
+
+    void* pStubTable = (void*)GetProcAddress(GetModuleHandleA(NULL), "g_StubLoadScreenFuncs");
+    if (pStubTable)
+    {
+        void (**funcs)(void) = (void (**)(void))pStubTable;
+        if (funcs[0] != Hook_LoadScreen_PlayerRun)
+        {
+            if (!s_orig_LoadScreenPlayerRun && funcs[0]) s_orig_LoadScreenPlayerRun = funcs[0];
+            funcs[0] = Hook_LoadScreen_PlayerRun;
+        }
+        if (funcs[1] != Hook_LoadScreen_BackgroundImg)
+        {
+            if (!s_orig_LoadScreenBgImg && funcs[1]) s_orig_LoadScreenBgImg = funcs[1];
+            funcs[1] = Hook_LoadScreen_BackgroundImg;
         }
     }
 #endif
@@ -221,6 +289,7 @@ PLUGIN_EXPORT void SH_Plugin_Init(void)
     Plugin_LoadNightmareConfig();
     ApplyShadowStalkerModelOverrides();
     Patch_HideHealthStatus();
+    InstallSeamlessDoorsHooks();
 }
 
 static s_MapOverlayHdr s_nightmareMapHdr;
@@ -236,6 +305,7 @@ PLUGIN_EXPORT void SH_Plugin_OnNewGame(void)
     SH_LOG("[NIGHTMARE_PLUGIN] New Game started in Nightmare Mode.");
     ApplyShadowStalkerModelOverrides();
     Patch_HideHealthStatus();
+    InstallSeamlessDoorsHooks();
 }
 
 PLUGIN_EXPORT void SH_Plugin_OnMapLoad(s32 mapIdx)
@@ -243,6 +313,7 @@ PLUGIN_EXPORT void SH_Plugin_OnMapLoad(s32 mapIdx)
     Plugin_LoadNightmareConfig();
     ApplyShadowStalkerModelOverrides();
     Patch_HideHealthStatus();
+    InstallSeamlessDoorsHooks();
 
     const char* mapName = MapRegistry_GetName((e_MapIdx)mapIdx);
     SH_LOG("[NIGHTMARE_PLUGIN] Map loaded: %d (%s)", mapIdx, mapName ? mapName : "map");
@@ -263,6 +334,25 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
 {
     /* Always ensure nightmare mode is active when plugin is present */
     g_PcConfig.nightmare = 1;
+
+    InstallSeamlessDoorsHooks();
+
+    /* Seamless Door Transitions: fast-forward load screen timer and reset fade */
+    if (g_SysWork.processFlags & (ProcessFlag_RoomTransition | ProcessFlag_OverlayTransition))
+    {
+        if (g_GameWork.gameState == GameState_MainLoadScreen)
+        {
+            if (g_SysWork.counters_1C[0] < 60)
+            {
+                g_SysWork.counters_1C[0] = 60;
+            }
+            g_Screen_FadeStatus = ScreenFadeState_Reset;
+        }
+        else if (g_GameWork.gameState == GameState_InGame && g_GameWork.gameStateSteps[0] <= 1)
+        {
+            g_Screen_FadeStatus = ScreenFadeState_Reset;
+        }
+    }
 
     ProcessOverlayInput();
 
