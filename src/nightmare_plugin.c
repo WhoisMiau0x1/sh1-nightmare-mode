@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "decomp/types.h"
-#include "bodyprog/math/math.h"
 #include "game.h"
 #include "pc_config.h"
 #include "bodyprog/bodyprog.h"
@@ -638,4 +636,33 @@ PLUGIN_EXPORT void SH_Plugin_ModifyRadioAttributes(s32* volume, s32* pitch)
             *pitch = (hp <= Q12(15.0f)) ? (wobble * 3) : (wobble * 2);
         }
     }
+}
+
+PLUGIN_EXPORT struct _VECTOR3 SH_Plugin_PredictTargetPos(struct _VECTOR3 from, struct _VECTOR3 to)
+{
+    if (!g_PcConfig.nightmare)
+        return to;
+
+    /* Calculate 2D distance from enemy to Harry */
+    q19_12 dx = to.vx - from.vx;
+    q19_12 dz = to.vz - from.vz;
+    q19_12 dist = Math_Vector2MagCalcSafeQ6(dx, dz);
+
+    /* Only apply predictive lead if Harry is moving and within active chase range (1.2m to 20m) */
+    q19_12 playerSpeed = g_SysWork.playerWork.player.moveSpeed;
+    if (playerSpeed > Q12(0.1f) && dist > Q12(1.2f) && dist < Q12(20.0f))
+    {
+        /* Dynamic look-ahead time scaled by distance (0.15s up to 0.5s lead) */
+        q19_12 leadTime = dist / 16;
+        if (leadTime > Q12(0.5f))  leadTime = Q12(0.5f);
+        if (leadTime < Q12(0.15f)) leadTime = Q12(0.15f);
+
+        q19_12 playerAngle = g_SysWork.playerWork.player.rotation.vy;
+        q19_12 leadDist = Q12_MULT_PRECISE(playerSpeed, leadTime);
+
+        to.vx += Q12_MULT_PRECISE(Math_Sin(playerAngle), leadDist);
+        to.vz += Q12_MULT_PRECISE(Math_Cos(playerAngle), leadDist);
+    }
+
+    return to;
 }
