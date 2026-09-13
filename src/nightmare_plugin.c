@@ -61,11 +61,16 @@ static void Patch_HideHealthStatus(void)
 /* Seamless Door Transitions Support: dynamic in-memory hooks */
 static void (*s_orig_LoadScreenPlayerRun)(void) = NULL;
 static void (*s_orig_LoadScreenBgImg)(void)     = NULL;
+static void* s_pScreen_FadeUpdate               = NULL;
+static void (*s_orig_Screen_FadeUpdate)(void)  = NULL;
+static unsigned char s_orig_FadeUpdate_Bytes[14];
+static unsigned char s_hook_FadeUpdate_Bytes[14];
+static int s_fadeHookInstalled                 = 0;
+extern q19_12 g_ScreenFadeTimestep;
 
 static void Hook_LoadScreen_PlayerRun(void)
 {
-    if (g_SysWork.processFlags == ProcessFlag_RoomTransition ||
-        g_SysWork.processFlags == ProcessFlag_OverlayTransition)
+    if (g_SysWork.processFlags & (ProcessFlag_RoomTransition | ProcessFlag_OverlayTransition))
     {
         return; /* Seamless: don't draw loading screen or runner during door transitions */
     }
@@ -77,14 +82,37 @@ static void Hook_LoadScreen_PlayerRun(void)
 
 static void Hook_LoadScreen_BackgroundImg(void)
 {
-    if (g_SysWork.processFlags == ProcessFlag_RoomTransition ||
-        g_SysWork.processFlags == ProcessFlag_OverlayTransition)
+    if (g_SysWork.processFlags & (ProcessFlag_RoomTransition | ProcessFlag_OverlayTransition))
     {
         return; /* Seamless: don't draw loading background during door transitions */
     }
     if (s_orig_LoadScreenBgImg)
     {
         s_orig_LoadScreenBgImg();
+    }
+}
+
+static void Hook_Screen_FadeUpdate(void)
+{
+    if ((g_SysWork.processFlags & (ProcessFlag_RoomTransition | ProcessFlag_OverlayTransition)) ||
+        (g_GameWork.gameState == GameState_MainLoadScreen) ||
+        (g_GameWork.gameState == GameState_InGame && g_GameWork.gameStateSteps[0] <= 1))
+    {
+        g_ScreenFadeTimestep = 0;
+        g_Screen_FadeStatus  = SCREEN_FADE_STATUS(ScreenFadeState_None, false);
+        return;
+    }
+
+    if (s_pScreen_FadeUpdate && s_orig_Screen_FadeUpdate)
+    {
+        DWORD oldProtect;
+        VirtualProtect(s_pScreen_FadeUpdate, 14, PAGE_EXECUTE_READWRITE, &oldProtect);
+        memcpy(s_pScreen_FadeUpdate, s_orig_FadeUpdate_Bytes, 14);
+
+        s_orig_Screen_FadeUpdate();
+
+        memcpy(s_pScreen_FadeUpdate, s_hook_FadeUpdate_Bytes, 14);
+        VirtualProtect(s_pScreen_FadeUpdate, 14, oldProtect, &oldProtect);
     }
 }
 
@@ -120,6 +148,34 @@ static void InstallSeamlessDoorsHooks(void)
         {
             if (!s_orig_LoadScreenBgImg && funcs[1]) s_orig_LoadScreenBgImg = funcs[1];
             funcs[1] = Hook_LoadScreen_BackgroundImg;
+        }
+    }
+
+    if (!s_fadeHookInstalled)
+    {
+        s_pScreen_FadeUpdate = (void*)GetProcAddress(GetModuleHandleA(NULL), "Screen_FadeUpdate");
+        if (s_pScreen_FadeUpdate)
+        {
+            DWORD oldProtect;
+            if (VirtualProtect(s_pScreen_FadeUpdate, 14, PAGE_EXECUTE_READWRITE, &oldProtect))
+            {
+                memcpy(s_orig_FadeUpdate_Bytes, s_pScreen_FadeUpdate, 14);
+                s_orig_Screen_FadeUpdate = (void (*)(void))s_pScreen_FadeUpdate;
+
+                /* 64-bit absolute jump: FF 25 00 00 00 00 <8-byte target address> */
+                s_hook_FadeUpdate_Bytes[0] = 0xFF;
+                s_hook_FadeUpdate_Bytes[1] = 0x25;
+                s_hook_FadeUpdate_Bytes[2] = 0x00;
+                s_hook_FadeUpdate_Bytes[3] = 0x00;
+                s_hook_FadeUpdate_Bytes[4] = 0x00;
+                s_hook_FadeUpdate_Bytes[5] = 0x00;
+                *(void**)&s_hook_FadeUpdate_Bytes[6] = (void*)Hook_Screen_FadeUpdate;
+
+                memcpy(s_pScreen_FadeUpdate, s_hook_FadeUpdate_Bytes, 14);
+                VirtualProtect(s_pScreen_FadeUpdate, 14, oldProtect, &oldProtect);
+                s_fadeHookInstalled = 1;
+                SH_LOG("[NIGHTMARE_PLUGIN] Hooked Screen_FadeUpdate for seamless doors.");
+            }
         }
     }
 #endif
@@ -337,20 +393,23 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
 
     InstallSeamlessDoorsHooks();
 
-    /* Seamless Door Transitions: fast-forward load screen timer and reset fade */
+    /* Seamless Door Transitions: bypass loading delay, cancel loading screen and reset fade */
     if (g_SysWork.processFlags & (ProcessFlag_RoomTransition | ProcessFlag_OverlayTransition))
     {
+        g_SysWork.loadingScreenIdx = LoadingScreenId_None;
         if (g_GameWork.gameState == GameState_MainLoadScreen)
         {
-            if (g_SysWork.counters_1C[0] < 60)
+            if (g_GameWork.gameStateSteps[0] >= 10 && g_SysWork.counters_1C[0] < 60)
             {
                 g_SysWork.counters_1C[0] = 60;
             }
-            g_Screen_FadeStatus = ScreenFadeState_Reset;
+            g_ScreenFadeTimestep = 0;
+            g_Screen_FadeStatus  = SCREEN_FADE_STATUS(ScreenFadeState_None, false);
         }
         else if (g_GameWork.gameState == GameState_InGame && g_GameWork.gameStateSteps[0] <= 1)
         {
-            g_Screen_FadeStatus = ScreenFadeState_Reset;
+            g_ScreenFadeTimestep = 0;
+            g_Screen_FadeStatus  = SCREEN_FADE_STATUS(ScreenFadeState_None, false);
         }
     }
 
@@ -726,33 +785,4 @@ PLUGIN_EXPORT void SH_Plugin_ModifyRadioAttributes(s32* volume, s32* pitch)
             *pitch = (hp <= Q12(15.0f)) ? (wobble * 3) : (wobble * 2);
         }
     }
-}
-
-PLUGIN_EXPORT struct _VECTOR3 SH_Plugin_PredictTargetPos(struct _VECTOR3 from, struct _VECTOR3 to)
-{
-    if (!g_PcConfig.nightmare)
-        return to;
-
-    /* Calculate 2D distance from enemy to Harry */
-    q19_12 dx = to.vx - from.vx;
-    q19_12 dz = to.vz - from.vz;
-    q19_12 dist = Math_Vector2MagCalcSafeQ6(dx, dz);
-
-    /* Only apply predictive lead if Harry is moving and within active chase range (1.2m to 20m) */
-    q19_12 playerSpeed = g_SysWork.playerWork.player.moveSpeed;
-    if (playerSpeed > Q12(0.1f) && dist > Q12(1.2f) && dist < Q12(20.0f))
-    {
-        /* Dynamic look-ahead time scaled by distance (0.15s up to 0.5s lead) */
-        q19_12 leadTime = dist / 16;
-        if (leadTime > Q12(0.5f))  leadTime = Q12(0.5f);
-        if (leadTime < Q12(0.15f)) leadTime = Q12(0.15f);
-
-        q19_12 playerAngle = g_SysWork.playerWork.player.rotation.vy;
-        q19_12 leadDist = Q12_MULT_PRECISE(playerSpeed, leadTime);
-
-        to.vx += Q12_MULT_PRECISE(Math_Sin(playerAngle), leadDist);
-        to.vz += Q12_MULT_PRECISE(Math_Cos(playerAngle), leadDist);
-    }
-
-    return to;
 }
