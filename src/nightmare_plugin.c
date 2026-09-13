@@ -38,6 +38,14 @@ static void ApplyShadowStalkerModelOverrides(void)
     CHARA_FILE_INFOS[Chara_Mumbler].modelFileIdx         = FILE_CHARA_CLD2_ILM;
     CHARA_FILE_INFOS[Chara_Mumbler].textureFileIdx       = FILE_CHARA_CLD2_TIM;
     CHARA_FILE_INFOS[Chara_Mumbler].materialBlendMode   = BlendMode_Subtractive;
+
+    CHARA_FILE_INFOS[Chara_Stalker].modelFileIdx         = FILE_CHARA_CLD2_ILM;
+    CHARA_FILE_INFOS[Chara_Stalker].textureFileIdx       = FILE_CHARA_CLD2_TIM;
+    CHARA_FILE_INFOS[Chara_Stalker].materialBlendMode   = BlendMode_Subtractive;
+
+    CHARA_FILE_INFOS[Chara_LarvalStalker].modelFileIdx   = FILE_CHARA_CLD1_ILM;
+    CHARA_FILE_INFOS[Chara_LarvalStalker].textureFileIdx = FILE_CHARA_CLD1_TIM;
+    CHARA_FILE_INFOS[Chara_LarvalStalker].materialBlendMode = BlendMode_Subtractive;
 }
 
 static void Patch_HideHealthStatus(void)
@@ -87,8 +95,6 @@ static void Plugin_LoadNightmareConfig(void)
     fclose(f);
 }
 
-
-
 extern void Options_Menu_VignetteDraw(void);
 
 static s32 s_overlayOpen = 0;
@@ -98,7 +104,7 @@ static void ProcessOverlayInput(void)
 {
 #ifdef _WIN32
     static int s_prevN = 0;
-    int nDown = (GetAsyncKeyState('N') & 0x8000) != 0 || (GetAsyncKeyState(VK_F4) & 0x8000) != 0;
+    int nDown = (GetAsyncKeyState('N') & 0x8000) != 0 || (GetAsyncKeyState(VK_F7) & 0x8000) != 0;
     if (nDown && !s_prevN)
     {
         s_overlayOpen = !s_overlayOpen;
@@ -200,7 +206,7 @@ static void DrawOverlayMenu(void)
     Gfx_StringSetPosition(50, 170);
     Gfx_StringDraw("UP/DOWN: Select", 32);
     Gfx_StringSetPosition(50, 190);
-    Gfx_StringDraw("N: Close", 32);
+    Gfx_StringDraw("N / F7: Close", 32);
 
     Gfx_StringsReset2dLayerIdx();
 }
@@ -223,10 +229,16 @@ PLUGIN_EXPORT void SH_Plugin_Init(void)
     Patch_HideHealthStatus();
 }
 
+PLUGIN_EXPORT void SH_Plugin_Shutdown(void)
+{
+    SH_LOG("[NIGHTMARE_PLUGIN] Shutdown.");
+}
+
 static s_MapOverlayHdr s_nightmareMapHdr;
 static s32            s_lastMapIdx = -1;
 extern void           Gfx_MapEffectsAssign(s_MapOverlayHdr* mapHdr);
 extern void           Game_TurnFlashlightOn(void);
+extern bool           Lm_MaterialFsImageApply(s_LmHeader* lmHdr, char* fileName, s_FsImageDesc* image, s32 blendMode);
 
 PLUGIN_EXPORT void SH_Plugin_OnNewGame(void)
 {
@@ -256,8 +268,7 @@ PLUGIN_EXPORT void SH_Plugin_OnMapLoad(s32 mapIdx)
     }
 }
 
-static s_CharaModel* s_lastChildModel = NULL;
-static q19_12        s_prevHp         = 0;
+static q19_12 s_prevHp = 0;
 
 PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
 {
@@ -265,6 +276,9 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
     g_PcConfig.nightmare = 1;
 
     ProcessOverlayInput();
+
+    /* Apply shadow stalker file table overrides continuously so no map reset or region patch reverts them */
+    ApplyShadowStalkerModelOverrides();
 
     /* Patch health indicator in inventory */
     static int s_patchedHealth = 0;
@@ -281,9 +295,7 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
     {
         if (s_lastMapIdx != g_SavegamePtr->mapIdx ||
             g_pMapOverlayHeader->field_16 != 2 ||
-            g_pMapOverlayHeader->field_17 != 6 ||
-            g_SysWork.field_2388.field_84[0].effectsInfo_0.fogColor_14.r > 0 ||
-            g_SysWork.field_2388.field_84[0].effectsInfo_0.fogColor_14.g > 0)
+            g_pMapOverlayHeader->field_17 != 6)
         {
             s_lastMapIdx = g_SavegamePtr->mapIdx;
             s_nightmareMapHdr = *g_pMapOverlayHeader;
@@ -299,40 +311,44 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
             Game_TurnFlashlightOn();
         }
 
-        /* Nightmare Mode: Grey Children / Mumblers / Stalkers are rendered as translucent shadow stalkers */
+        /* Nightmare Mode: Grey Children, Mumblers, and Stalkers are rendered as translucent shadow stalkers */
+        for (int i = 0; i < 4; i++)
+        {
+            s_CharaModel* m = &g_WorldGfxWork.charaModels[i];
+            if (m->charaId == Chara_GreyChild || m->charaId == Chara_Mumbler ||
+                m->charaId == Chara_Stalker || m->charaId == Chara_LarvalStalker)
+            {
+                if (m->isLoaded && m->lmHdr != NULL)
+                {
+                    Lm_TransparentPrimSet(m->lmHdr, true);
+                    Lm_MaterialFsImageApply(m->lmHdr, "CLD1", &m->texture, BlendMode_Subtractive);
+                    Lm_MaterialFsImageApply(m->lmHdr, "CLD2", &m->texture, BlendMode_Subtractive);
+                    Lm_MaterialFsImageApply(m->lmHdr, "CLD3", &m->texture, BlendMode_Subtractive);
+                    Lm_MaterialFsImageApply(m->lmHdr, "CLD4", &m->texture, BlendMode_Subtractive);
+                    Lm_MaterialFlagsApply(m->lmHdr);
+                }
+            }
+        }
+
         if (WorldGfx_IsCharaModelPresent(Chara_GreyChild))
         {
-            s_CharaModel* m = g_WorldGfxWork.registeredCharaModels[Chara_GreyChild];
-            if (m != NULL && m != s_lastChildModel)
-            {
-                WorldGfx_CharaModelTransparentSet(Chara_GreyChild, true);
-                WorldGfx_CharaModelMaterialSet(Chara_GreyChild, BlendMode_Subtractive);
-                s_lastChildModel = m;
-            }
+            WorldGfx_CharaModelTransparentSet(Chara_GreyChild, true);
+            WorldGfx_CharaModelMaterialSet(Chara_GreyChild, BlendMode_Subtractive);
         }
-        else if (WorldGfx_IsCharaModelPresent(Chara_Mumbler))
+        if (WorldGfx_IsCharaModelPresent(Chara_Mumbler))
         {
-            s_CharaModel* m = g_WorldGfxWork.registeredCharaModels[Chara_Mumbler];
-            if (m != NULL && m != s_lastChildModel)
-            {
-                WorldGfx_CharaModelTransparentSet(Chara_Mumbler, true);
-                WorldGfx_CharaModelMaterialSet(Chara_Mumbler, BlendMode_Subtractive);
-                s_lastChildModel = m;
-            }
+            WorldGfx_CharaModelTransparentSet(Chara_Mumbler, true);
+            WorldGfx_CharaModelMaterialSet(Chara_Mumbler, BlendMode_Subtractive);
         }
-        else if (WorldGfx_IsCharaModelPresent(Chara_Stalker))
+        if (WorldGfx_IsCharaModelPresent(Chara_Stalker))
         {
-            s_CharaModel* m = g_WorldGfxWork.registeredCharaModels[Chara_Stalker];
-            if (m != NULL && m != s_lastChildModel)
-            {
-                WorldGfx_CharaModelTransparentSet(Chara_Stalker, true);
-                WorldGfx_CharaModelMaterialSet(Chara_Stalker, BlendMode_Subtractive);
-                s_lastChildModel = m;
-            }
+            WorldGfx_CharaModelTransparentSet(Chara_Stalker, true);
+            WorldGfx_CharaModelMaterialSet(Chara_Stalker, BlendMode_Subtractive);
         }
-        else
+        if (WorldGfx_IsCharaModelPresent(Chara_LarvalStalker))
         {
-            s_lastChildModel = NULL;
+            WorldGfx_CharaModelTransparentSet(Chara_LarvalStalker, true);
+            WorldGfx_CharaModelMaterialSet(Chara_LarvalStalker, BlendMode_Subtractive);
         }
 
         /* 2x Lethal Combat Damage in any binary build:
@@ -401,8 +417,8 @@ PLUGIN_EXPORT int SH_Plugin_OverrideWeather(s32* ambient, s32* rain)
     if (!g_PcConfig.nightmare)
         return 0;
 
-    if (ambient) *ambient = 6; // Dark Otherworld pitch-black ambient preset (MAP_EFFECTS_INFOS[6])
-    if (rain)    *rain    = 3; // Flashlight lit preset (MAP_EFFECTS_INFOS[3])
+    if (ambient) *ambient = 2; // Dark Otherworld ambient (field_16 = 2)
+    if (rain)    *rain    = 6; // Heavy rain & storm (field_17 = 6)
     return 1;
 }
 
@@ -577,18 +593,8 @@ PLUGIN_EXPORT void SH_Plugin_OnScreenFadeDraw(void)
 
 PLUGIN_EXPORT int SH_Plugin_OverrideNpcSpawn(e_CharaId* charaId)
 {
-    if (!charaId) return 0;
-    /* Swap street enemies to their Otherworld counterparts */
-    if (*charaId == Chara_AirScreamer)
-    {
-        *charaId = Chara_NightFlutter;
-        return 1;
-    }
-    if (*charaId == Chara_Groaner)
-    {
-        *charaId = Chara_Wormhead;
-        return 1;
-    }
+    /* Keep native map character IDs so mapOverlayHeader.charaUpdateFuncs remains 100% functional */
+    (void)charaId;
     return 0;
 }
 
