@@ -8,7 +8,7 @@ An authentic Survival Horror Difficulty & Immersion Plugin for the **Silent Hill
 
 | Package | Contents | Description |
 | :--- | :--- | :--- |
-| **`Nightmare_Mode_v1.3.3.zip`** | `plugins/nightmare_mode.dll`, `mod.json` | Standalone C Plugin for Silent Hill PC Port. |
+| **`Nightmare_Mode_v1.3.4.zip`** | `plugins/nightmare_mode.dll`, `mod.json` | Standalone C Plugin for Silent Hill PC Port. |
 
 ---
 
