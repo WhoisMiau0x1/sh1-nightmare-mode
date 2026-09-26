@@ -15,7 +15,7 @@ An authentic Survival Horror Difficulty & Immersion Plugin for the **Silent Hill
 ## 🚀 Installation Guide
 
 ### Option 1: Direct Plugin Install (Recommended)
-1. Download **`Nightmare_Mode_v1.3.3.zip`**.
+1. Download **`Nightmare_Mode_v1.3.4.zip`**.
 2. Copy `nightmare_mode.dll` into your game's `plugins/` directory:
    ```text
    SilentHillPC/
@@ -33,7 +33,7 @@ An authentic Survival Horror Difficulty & Immersion Plugin for the **Silent Hill
 ---
 
 ### Option 2: Via Mod Manager
-1. Extract **`Nightmare_Mode_v1.3.3.zip`** into your game's `mods/` directory.
+1. Extract **`Nightmare_Mode_v1.3.4.zip`** into your game's `mods/` directory.
 2. Open `SilentHillPC_Launcher.exe`, go to the **Mod Manager** tab.
 3. Check **Nightmare Mode** and click **Apply** / **Play**.
 
