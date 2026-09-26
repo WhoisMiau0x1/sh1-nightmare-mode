@@ -351,6 +351,28 @@ PLUGIN_EXPORT void SH_Plugin_OnUpdate(void)
             WorldGfx_CharaModelMaterialSet(Chara_LarvalStalker, BlendMode_Subtractive);
         }
 
+        /* Nightmare Mode: Grey Children, Mumblers, and Stalkers 1.8x Speed Boost */
+        for (int i = 0; i < (int)(sizeof(g_SysWork.npcs) / sizeof(g_SysWork.npcs[0])); i++)
+        {
+            s_SubCharacter* npc = &g_SysWork.npcs[i];
+            if (npc->model.charaId == Chara_GreyChild ||
+                npc->model.charaId == Chara_Mumbler ||
+                npc->model.charaId == Chara_Stalker ||
+                npc->model.charaId == Chara_LarvalStalker)
+            {
+                if (npc->health > Q12(0.0f) && npc->moveSpeed > Q12(0.0f) && g_DeltaTime > Q12(0.0f))
+                {
+                    /* Extra 0.8x displacement to achieve 1.8x total movement speed */
+                    q19_12 extraDist = Q12_MULT_PRECISE(Q12_MULT_FLOAT_PRECISE(npc->moveSpeed, 0.8f), g_DeltaTime);
+                    npc->position.vx += Q12_MULT(extraDist, Math_Sin(npc->rotation.vy));
+                    npc->position.vz += Q12_MULT(extraDist, Math_Cos(npc->rotation.vy));
+
+                    /* Advance animation time by extra 0.8x so leg movements match 1.8x speed */
+                    npc->model.anim.time += Q12_MULT_PRECISE(Q12_MULT_FLOAT_PRECISE(npc->moveSpeed, 24.536f), g_DeltaTime);
+                }
+            }
+        }
+
         /* 2x Lethal Combat Damage in any binary build:
          * Double incoming damage buffer and monitor direct health loss */
         if (g_SysWork.playerWork.player.damage.amount > 0)

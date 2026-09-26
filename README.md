@@ -8,14 +8,14 @@ An authentic Survival Horror Difficulty & Immersion Plugin for the **Silent Hill
 
 | Package | Contents | Description |
 | :--- | :--- | :--- |
-| **`Nightmare_Mode_v1.3_Release.zip`** | `plugins/nightmare_mode.dll`, `mod.json` | Standalone C Plugin for Silent Hill PC Port. |
+| **`Nightmare_Mode_v1.3.3.zip`** | `plugins/nightmare_mode.dll`, `mod.json` | Standalone C Plugin for Silent Hill PC Port. |
 
 ---
 
 ## 🚀 Installation Guide
 
 ### Option 1: Direct Plugin Install (Recommended)
-1. Download **`Nightmare_Mode_v1.3_Release.zip`**.
+1. Download **`Nightmare_Mode_v1.3.3.zip`**.
 2. Copy `nightmare_mode.dll` into your game's `plugins/` directory:
    ```text
    SilentHillPC/
@@ -33,7 +33,7 @@ An authentic Survival Horror Difficulty & Immersion Plugin for the **Silent Hill
 ---
 
 ### Option 2: Via Mod Manager
-1. Extract `Nightmare_Mode_v1.3_Release.zip` into your game's `mods/` directory.
+1. Extract **`Nightmare_Mode_v1.3.3.zip`** into your game's `mods/` directory.
 2. Open `SilentHillPC_Launcher.exe`, go to the **Mod Manager** tab.
 3. Check **Nightmare Mode** and click **Apply** / **Play**.
 
@@ -42,6 +42,7 @@ An authentic Survival Horror Difficulty & Immersion Plugin for the **Silent Hill
 ## 🎮 Features
 
 - 💀 **2x Combat Damage**: High-stakes combat where every encounter demands careful positioning and resource management.
+- ⚡ **1.8x Stalker Speed Boost**: Grey Children, Mumblers, and Stalkers pursue Harry with 1.8x movement and synchronized animation speed.
 - 👻 **Translucent Shadow Stalkers**: School enemies (Grey Children & Mumblers) spawn as ominous translucent shadow stalkers rendered with subtractive material blending.
 - 🌧️ **Atmospheric Darkness & Heavy Rain**: Enforces perpetual Otherworld darkness, storm rain, and active flashlight across town.
 - 🩸 **Dynamic Low-Health Heartbeat Vignette**: Pulsing blood-red edge vignette synchronized with player heartbeat when health drops to critical levels.

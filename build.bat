@@ -21,27 +21,30 @@ if not exist "bin" mkdir bin
 if not exist "bin\plugins" mkdir bin\plugins
 
 echo [*] Compiling nightmare_mode.dll...
-gcc -shared -O2 -s ^
+gcc -shared -O2 -s -std=gnu11 ^
   -DSH_PC_PORT -DVER_USA -DSKIP_ASM -DPSYX_SKIP_FRAMEBUFFER_STORE ^
   -Dstatic_assert=_Static_assert ^
+  -I"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\pc_port\include" ^
+  -I"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\include" ^
+  -I"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\include\decomp" ^
+  -I"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\pc_port\include\psyq_compat" ^
+  -I"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\pc_port\PsyCross\include\psx" ^
+  -I"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\pc_port\PsyCross\include" ^
   -I"include" ^
-  -I"..\silent-hill-decomp-pc-port\pc_port\include" ^
-  -I"..\silent-hill-decomp-pc-port\include" ^
-  -I"..\silent-hill-decomp-pc-port\pc_port\include\psyq_compat" ^
-  -I"..\silent-hill-decomp-pc-port\pc_port\PsyCross\include\psx" ^
-  -I"..\silent-hill-decomp-pc-port\pc_port\PsyCross\include" ^
+  -I"include\decomp" ^
   src\nightmare_plugin.c ^
-  -L"..\silent-hill-decomp-pc-port\pc_port\dist" -lSilentHillPC ^
+  -L"..\silent-hill-decomp-pc-port\silent-hill-decomp-pc-port\pc_port\build" -lSilentHillPC.dll ^
   -o "bin\plugins\nightmare_mode.dll"
 
 if %errorlevel% equ 0 (
     echo [SUCCESS] nightmare_mode.dll built successfully in bin\plugins\
 ) else (
-    echo [!] Direct link failed. Compiling standalone export DLL...
-    gcc -shared -O2 -s ^
+    echo [!] Direct link fallback: compiling standalone export DLL...
+    gcc -shared -O2 -s -std=gnu11 ^
       -DSH_PC_PORT -DVER_USA -DSKIP_ASM -DPSYX_SKIP_FRAMEBUFFER_STORE ^
       -Dstatic_assert=_Static_assert ^
       -I"include" ^
+      -I"include\decomp" ^
       src\nightmare_plugin.c ^
       -o "bin\plugins\nightmare_mode.dll"
     if %errorlevel% equ 0 (
